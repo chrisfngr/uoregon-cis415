@@ -3,7 +3,7 @@ CFLAGS=-W -Wall
 all: finddupl
 
 clean:
-	rm -f *.o finddupl*
+	rm -f *.o finddupl
 
 finddupl: finddupl.o mentry.o mlist.o
 	cc -o finddupl finddupl.o mentry.o mlist.o

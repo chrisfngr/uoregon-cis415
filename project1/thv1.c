@@ -18,7 +18,16 @@ int main(int argc, const char* argv[])
     int nprocesses  = -1; //p1atoi(getenv("TH_NPROCESSES"));
     int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
     int location    = -1;
+    
+    if(getenv("TH_NPROCESSES") == NULL){
+        setenv("TH_NPROCESSES", "5", 1);
+    }
+    if(getenv("TH_NPROCESSORS") == NULL){
+        setenv("TH_NPROCESSORS", "1", 1);
+    }
 
+    nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
+    nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
 
 
     char *command;

@@ -1,0 +1,9 @@
+My project will compile with a few errors, but it doesn't work properly.
+Mentry works without memory leaks or errors, but MList does not work.
+Its resize and destroy functions were not implemented properly.
+
+Because S.txt doesn't need to resize, it will work with my full solution, although there are still memory leaks.
+
+Joseph Yaconelli
+UOID josephy
+# 951 485 015

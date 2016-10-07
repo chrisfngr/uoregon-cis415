@@ -24,6 +24,14 @@ int main(int argc, char *argv[]) {
 		fd = stdin;
 		
 	ml = ml_create();
+        
+        while((mep = me_get(fd)) != NULL) {
+
+            meq = ml_lookup(ml, mep);
+            if(meq == NULL)
+                (void) ml_add(&ml, mep);
+        }
+	/*
 	while ((mep = me_get(fd)) != NULL) {
 	
 		if (meq == NULL)
@@ -38,8 +46,10 @@ int main(int argc, char *argv[]) {
 			me_destroy(mep);
 		}
 	}
+	*/
 	ml_destroy(ml);
 	if (fd != stdin)
 		fclose(fd);
+         fprintf(stderr, "all done!\n");
 	return 0;
 }

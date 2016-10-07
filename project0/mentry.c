@@ -87,8 +87,6 @@ unsigned long me_hash(MEntry *me, unsigned long size)
 
     hash_val = hash_val + me->house_number;
 
-    printf("hash_val: %f\thash_val % size-1: %f\n", hash_val, hash_val % (size - 1));
-
     return hash_val % (size - 1);
 }
 
@@ -159,9 +157,6 @@ int me_compare(MEntry *me1, MEntry *me2)
         return 1;
     }
 
-
-
-
     return 0;
 }
 
@@ -175,5 +170,4 @@ void me_destroy(MEntry *me)
     free(me->full_address);
     free(me);
 }
-
 

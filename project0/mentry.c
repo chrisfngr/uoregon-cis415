@@ -67,10 +67,29 @@ MEntry *me_get(FILE *fd)
 }
 
 
-
+/* using hashing function from "The C Programming Language" as a reference */
 unsigned long me_hash(MEntry *me, unsigned long size)
 {
-    return 0L;
+    char to_hash[1024];
+    to_hash[0] = '\0';
+
+    unsigned long hash_val = 0;
+
+    strcat(to_hash, me->surname);
+    strcat(to_hash, me->zipcode);
+
+    int i = 0;
+
+    for(; to_hash[i] != '\0'; i = i + 1)
+    {
+        hash_val = hash_val + to_hash[i];
+    }
+
+    hash_val = hash_val + me->house_number;
+
+    printf("hash_val: %f\thash_val % size-1: %f\n", hash_val, hash_val % (size - 1));
+
+    return hash_val % (size - 1);
 }
 
 

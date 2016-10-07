@@ -14,12 +14,7 @@ MEntry *me_get(FILE *fd)
     entry->full_address = (char*) malloc(sizeof(char)*1024);
     entry->surname      = (char*) malloc(sizeof(char)*1024);
 
-    if(entry->zipcode == NULL){
-        fprintf(stderr, "SHIT HIT THE FAN!!!");
-    }
-
-    char zero = '0';
-    memcpy(entry->full_address, &zero, 1024);
+    entry->full_address[0] = '\0';
 
     char buffer[1024];
     buffer[1023] = '\0';
@@ -39,8 +34,8 @@ MEntry *me_get(FILE *fd)
         return NULL;
     }
 
-    sscanf(buffer, "%[^,]\n", entry->surname);
-    sscanf(buffer, "", entry->full_address);
+
+    sscanf(buffer, "%[^,]", entry->surname);
     strcat(entry->full_address, buffer);
 
    
@@ -65,7 +60,7 @@ MEntry *me_get(FILE *fd)
         return NULL;
     }
 
-    sscanf(buffer, "%*s %*s %s", entry->zipcode);
+    sscanf(buffer, "%*[^,], %*s %s", entry->zipcode);
     strcat(entry->full_address, buffer);
 
     return entry;
@@ -116,17 +111,6 @@ int me_compare(MEntry *me1, MEntry *me2)
         return 1;
     }
 
-    /* compare house number */
-    tmp_result = (me1->house_number < me2->house_number) ? 1 : -1;
-    if(me1->house_number == me2->house_number){
-        /* skip over compares, because tmp_result will == -1 */
-    }else if(tmp_result < 0){
-        return -1;
-    }else{
-        return 1;
-    }
-
-
 
     char zip1[strlen(me1->zipcode)+1];
     char zip2[strlen(me2->zipcode)+1];
@@ -144,6 +128,20 @@ int me_compare(MEntry *me1, MEntry *me2)
     }else if(tmp_result > 0){
         return 1;
     }
+
+
+    /* compare house number */
+    tmp_result = (me1->house_number < me2->house_number) ? 1 : -1;
+    if(me1->house_number == me2->house_number){
+        return 0;
+    }else if(tmp_result < 0){
+        return -1;
+    }else{
+        return 1;
+    }
+
+
+
 
     return 0;
 }

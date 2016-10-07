@@ -14,6 +14,10 @@ MEntry *me_get(FILE *fd)
     entry->full_address = (char*) malloc(sizeof(char)*1024);
     entry->surname      = (char*) malloc(sizeof(char)*1024);
 
+    if(entry->zipcode == NULL){
+        fprintf(stderr, "SHIT HIT THE FAN!!!");
+    }
+
     char zero = '0';
     memcpy(entry->full_address, &zero, 1024);
 
@@ -35,7 +39,8 @@ MEntry *me_get(FILE *fd)
         return NULL;
     }
 
-    sscanf(buffer, "%s\n", entry->surname);
+    sscanf(buffer, "%[^,]\n", entry->surname);
+    sscanf(buffer, "", entry->full_address);
     strcat(entry->full_address, buffer);
 
    
@@ -60,7 +65,7 @@ MEntry *me_get(FILE *fd)
         return NULL;
     }
 
-    sscanf(buffer, "%s", entry->zipcode);
+    sscanf(buffer, "%*s %*s %s", entry->zipcode);
     strcat(entry->full_address, buffer);
 
     return entry;
@@ -84,7 +89,8 @@ void str_to_upper(char* orig_str, char* new_str)
 {
     unsigned int i = 0;
     while(i < strlen(orig_str)){
-        new_str[i] = toupper(orig_str[i++]);
+        new_str[i] = toupper(orig_str[i]);
+        i = i + 1;
     }
 }
 
@@ -95,11 +101,12 @@ int me_compare(MEntry *me1, MEntry *me2)
     char sur1[strlen(me1->surname)+1];
     char sur2[strlen(me2->surname)+1];
 
+
     str_to_upper(me1->surname, sur1);
     str_to_upper(me2->surname, sur2);
 
-    printf("New surname1: %s\n", sur1);
-    printf("New surname2: %s\n", sur2);
+    sur1[strlen(me1->surname)] = '\0';
+    sur2[strlen(me2->surname)] = '\0';
 
     /* compare surname */
     tmp_result = strcmp(sur1, sur2);
@@ -127,6 +134,9 @@ int me_compare(MEntry *me1, MEntry *me2)
     str_to_upper(me1->zipcode, zip1);
     str_to_upper(me2->zipcode, zip2);
 
+    zip1[strlen(me1->zipcode)] = '\0';
+    zip2[strlen(me2->zipcode)] = '\0';
+ 
     /* compare zipcode */
     tmp_result = strcmp(zip1, zip2);
     if(tmp_result < 0){

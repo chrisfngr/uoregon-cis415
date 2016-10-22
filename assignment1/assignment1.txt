@@ -1,0 +1,95 @@
+Joseph Yaconelli
+CIS 415
+Assignment 1
+
+1) OSC 2.18:
+Shared Memory and Message Passing.
+Message passing works better for smaller pieces of data.
+Shared memory allows reading and writing to a unified piece of memory,
+which makes it faster. Message passing is slower, and receiver will block
+Until it has received a message from sender.
+When using shared memory, the receiver isn't guaranteed that what it's reading
+Is what the sender intended be sent to you.
+
+2) OSC 2.19:
+The separation of mechanism and policy is desirable because it allows easy
+Modification to policy without having to mess too much with the kernel itself.
+
+3) OSC 3.9:
+To perform a context switch, a kernel must first save the state of the
+Current process, then load in the saved state for the new process.
+
+4) OSC 3.18:
+
+A. Synchronous benefit:
+It allows for a producer consumer relationship.
+Disadvantage:
+It can slow down a process because it has to wait for the OS to return.
+Asynchronous benefit:
+Asynchronous allows for a process to end faster because it can go off and
+Come back when it's ready.
+Disadvantage:
+It isn't as secure as synchronous.
+
+b. Automatic buffering benefit:
+There's less work for the user, because they don't have to think about how
+much space they're using because it automatically resizes.
+Disadvantage:
+You don't have control over how much space it uses, so it could use up much
+more memory that would be acceptable.
+Explicit buffering benefit:
+Always uses the exact amount of space you tell it to use
+Disadvantage:
+This can result in forcing the sender to block if the buffer becomes full
+
+c. Send by copy benefit:
+Allows the received data to be manipulated without affecting the original
+data.
+Disadvantage:
+can be very taxing since it has to copy all of the data and then send it.
+Send by reference benefit:
+This approach is much less demanding since it just sends a reference to the
+original data set.
+Disadvantage:
+Changing the received data also changes the original data, which isn't
+always desirable.
+
+d. Fixed-size messages benefit:
+This is easier to implement on the system side.
+Disadvantage:
+This is harder to implement for the programmer
+Variable-sized messages benefit:
+This is easier to implement on the programmer side.
+Disadvantage:
+This is harder to implement on the system side.
+
+5.
+First I'd look at /proc/[pid]/status
+Here I could see the executable's name, state, threads, info on virtual memory use,
+and voluntary and nonvoluntary context switches.
+This would give me a good starting place to get an idea of what the process is using.
+
+Then I'd look at /proc/[pid]/io
+This gives info on I/O use by the process. Specifically, I could see the number of
+bytes read and written and read and write system calls.
+This file would help answer the question, "Is this process more of a sink or source?"
+
+Next I'd look at the files (if any) inside /proc/[pid]/fd/
+Each file in fd/ would correspond to a file open by the program, so I could see
+what file streams, if any, the process is interacting with.
+This file would help me understand what find of data this process is working with,
+if any.
+
+Next I would look at /proc/[pid]/stack
+This file gives a full stack trace of all function calls.
+This would help give me a barebones structure of the code, since I don't have direct
+access to it. Although it wouldn't be terribly readable, it would do if necessary.
+
+Next I'd look at /proc/[pid]/cmdline
+This would give me the complete command line for the process.
+
+Next I'd look at /proc/[pid]/stat
+In here I could find the CPU number the process last ran on
+
+Finally I'd look at /proc/[pid]/smaps
+This would give me relevant information on memory usage by the process.

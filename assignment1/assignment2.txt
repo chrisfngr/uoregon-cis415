@@ -1,0 +1,35 @@
+Joseph Yaconelli
+CIS 415
+Assignment 2
+
+1.
+a) I would create one thread for input and output, because the bottle neck is the disk, so it doesn't make sense 
+to use more than one thread, since it won't go any faster, since the thread still has to wait on the I/O.
+
+b) I would create 4 threads for the CPU-intensive portion. Since this is all computation, it makes sense to
+utilize every core, but not to use more threads than cores available, because that doesn't give you access to
+anymore computing power, and just adds overhead.
+
+2.
+
+
+
+3.
+This short-term scheduling algorithm will favor I/O because since I/O is generally very slow compared to other
+operations, it will have spent the recent past getting data or placing data, which doesn't use the CPU. However,
+CPU-bound programs won't be starved because I/O is slow enough, that it isn't always happening, so there will be
+times when there's nothing for the processor to do, so it will schedule the CPU-bound programs.
+
+4.
+a)
+Optimizing CPU utilization could mean continuing to compute rather than sending an output to I/O until there's
+other work for the CPU to do, which then increases response time.
+b)
+Average turnaround time and maximum waiting time.
+Average turnaround time is optimized by trying to finish tasks as soon as possible, which can be in direct
+conflict with a technique in minimizing waiting time by breaking up longer jobs to make sure shorter ones
+always are getting finished.
+c)
+I/O Device utilization can mean there's nothing in the ready queue for the CPU because processes are all in the
+waiting queue, pending on the return of data from I/O, thereby leaving the CPU with nothing to do and unoptimize
+CPU utilization.

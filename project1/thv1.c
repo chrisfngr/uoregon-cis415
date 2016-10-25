@@ -4,7 +4,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <time.h>
+#include <stdio.h>
 
 void usage(){
     exit(1);
@@ -64,11 +65,15 @@ int main(int argc, const char* argv[])
 
 
 
-    long long starttime; //figure this out later, but should be "start time"
+    clock_t start, end; //figure this out later, but should be "start time"
+
+
 
     pid_t pid[nprocesses];
 
     int status;
+
+    start = clock();
 
     for(i = 0; i < nprocesses; i++){
         pid[i] = fork();
@@ -89,6 +94,12 @@ int main(int argc, const char* argv[])
     for(i = 0; i < nprocesses; i++){
         waitpid(pid[i], &status, 0);
     }
+
+    end = clock();
+
+
+    // seems to be some error here but I will figure that out later 
+    printf("time elapsed: %ld - %ld / %d = %f\n", end, start, CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
 
     free(command);
 

@@ -9,24 +9,15 @@
 #include <signal.h>
 
 void usage(){
+    printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
 }
 
-void handler(int sig){
 
-    printf("caught signal %d in thread %ld\n", sig, getpid());
-}
-
-void stophand(int sig){
-
-    printf("STOP: caught signal %d in thread %ld\n", sig, getpid());
-}
-
-int main(int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
-
     int i;
-    
+
     int nprocesses  = -1; //p1atoi(getenv("TH_NPROCESSES"));
     int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
     int location    = -1;
@@ -51,7 +42,6 @@ int main(int argc, const char* argv[])
             }
 
             // use p1atoi to convert str to int
-
             nprocesses = p1atoi(&(argv[i][location+1]));
  
         }else if(p1strneq(argv[i], "--processors=", p1strlen("--processors=")) == 1){
@@ -69,6 +59,8 @@ int main(int argc, const char* argv[])
             }
 
             p1strcpy(command, &(argv[i][location+1]));
+        }else{
+            usage();
         }
     }
     
@@ -90,15 +82,18 @@ int main(int argc, const char* argv[])
     sigaddset(&set, SIGUSR1);
     sigaddset(&set, SIGSTOP);
     sigaddset(&set, SIGCONT);
+
     s = sigprocmask(SIG_BLOCK, &set, NULL);
+
     if(s != 0)
         printf("error in sigprocmask creation!!\n");
  
-    char* args[1];
+    char* args[2];
     char file[p1strlen(command)+1];
     p1strcpy(file, command);
     args[0] = command;
 
+    args[1] = NULL;
 
     for(i = 0; i < nprocesses; i++){
        
@@ -106,20 +101,20 @@ int main(int argc, const char* argv[])
 
             status = sigwait(&set, &sig); 
 
-            signal(SIGSTOP, stophand);
-            signal(SIGCONT, handler);
+            signal(SIGCONT, SIG_DFL);
 
-            
 
             if(status != 0)
                 printf("error in sigwait!");
 
-            status = sigprocmask(SIG_UNBLOCK, &set, NULL);
+            if(status != 0)
+                printf("sig_unblock didn't work :)\n");
 
-            printf("thread %ld caught signal %d\n", getpid(), sig);
-            raise(SIGSTOP);
-            raise(SIGCONT);
+            printf("thread %ld caught signal %d\n", (long int) getpid(), sig);
+            //raise(SIGSTOP);
+            //raise(SIGCONT);
 
+            printf("about to call execvp(&s, &s, &s)\n", file, args[0], args[1]);
             if(execvp(file, args) < 0){
                  exit(1);
             }
@@ -127,22 +122,22 @@ int main(int argc, const char* argv[])
         }
     }
 
-
+    status = sigprocmask(SIG_UNBLOCK, &set, NULL);
     //start = clock();
     for(i = 0; i < nprocesses; i++){
-        printf("sugusr1 being sent to %ld\n", pid[i]);
+        printf("sugusr1 being sent to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGUSR1);
     }
 
 
     for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGSTOP to %ld\n", pid[i]);
+        printf("about to send SIGSTOP to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGSTOP);
     }
 
 
     for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGCONT to %ld\n", pid[i]);
+        printf("about to send SIGCONT to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGCONT);
     }
 

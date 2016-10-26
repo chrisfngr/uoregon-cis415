@@ -22,10 +22,65 @@ typedef struct pidQueue {
 //global pid queue. NOTE: should only be manipulated by 1 thread (the main thread)
 pid_queue queue = { NULL, NULL };
 
+int nprocesses  = -1; 
+int nprocessors = -1;
 
 void usage(){
     printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
+}
+
+//finds element in queue
+pid_queue_elem* findElem(int pid, pid_queue *queue){
+    pid_queue_elem *elem;
+    elem = queue->head;
+    while(elem != NULL){
+        if(elem->pid == pid)
+            return elem;
+    }
+    return NULL;
+}
+
+int removeElem(int pid, pid_queue *queue){
+    pid_queue_elem *elem_to_rm, *elem;
+    elem_to_rm = NULL;
+    elem       = NULL;
+
+    if((elem_to_rm = findElem(pid, queue)) == NULL)
+        return -1;
+
+    elem = queue->head;
+
+    while(elem->next != NULL){
+        if(elem->next == elem_to_rm)
+            break;
+    }
+
+    elem->next = elem_to_rm->next;
+    free(elem_to_rm);
+
+    return 1;
+}
+
+void childDeadHandler(){
+    // remove dead child from queue somehow...
+}
+
+void push(pid_queue_elem *elem, pid_queue *queue){
+    
+    if(queue->head == NULL){
+        queue->head = elem;
+        printf("pid %ld added as head!\n", (long int) elem->pid);
+    }else if(queue->tail == NULL){
+        queue->tail       = elem;
+        queue->head->next = elem;
+        printf("pid %ld added as tail!\n", (long int) elem->pid);
+    }else{
+        queue->tail->next = elem;
+        queue->tail       = elem;
+        printf("pid %ld added to end of queue!\n", (long int) elem->pid);
+    }
+
 }
 
 pid_queue_elem* createPIDQueueElem(pid_t pid)
@@ -46,19 +101,31 @@ pid_t addPIDToQueue(pid_t pid, pid_queue *queue)
     if((elem = createPIDQueueElem(pid)) == NULL)
         return -1;
 
-    if(queue->head == NULL){
-        queue->head = elem;
-        printf("pid %ld added as head!\n", (long int) pid);
-    }else if(queue->tail == NULL){
-        queue->tail = elem;
-        printf("pid %ld added as tail!\n", (long int) pid);
-    }else{
-        queue->tail->next = elem;
-        queue->tail       = elem;
-        printf("pid %ld added to end of queue!\n", (long int) pid);
-    }
-
+    push(elem, queue);
     return pid;
+}
+
+pid_queue_elem* pop(pid_queue *queue)
+{
+    if(queue->head == NULL)
+        return NULL;
+
+    pid_queue_elem *newHead, *result;
+    newHead = queue->head->next;
+    result  = queue->head;
+
+    queue->head = newHead;
+    return result;
+}
+
+
+pid_queue_elem* cycleElem(pid_queue *queue){
+    pid_queue_elem *elem = NULL;
+    if((elem = pop(queue)) == NULL)
+        return NULL;
+    push(elem, queue);
+    
+    return elem;
 }
 
 
@@ -69,16 +136,39 @@ void scheduler(){
     signal(SIGCONT) to the next NPROCESSORS from pid[] that are still alive
                     (which means this has to be able to access pid[])
     */
+
+    signal(SIGALRM, SIG_IGN);
     printf("scheduler called\n");
 
-    /* broadcast SIGSTOP to stop all running processes */
-    kill(0, SIGSTOP); // might need to be -1 instead of 0
+    if(queue.head == NULL){
+        printf("queue empty\n");
+        return;
+    }
 
-    /* run the next NPROCESSORS living children from pid[] */
-    
+    pid_queue_elem *elem = queue.head;
 
-    //runNext(4); //replace with NPROCESSORS
+   
+    printf("about to stop children processes\n");
+ 
+    while(elem != NULL){
+        kill(elem->pid, SIGSTOP);
+        elem = elem->next;
+    }
 
+
+
+    printf("just stopped all child processes\n");
+
+    int i;
+    pid_queue_elem *pid_elem = NULL;
+    for(i = 0; i < nprocessors; i++){
+        if((pid_elem = cycleElem(&queue)) == NULL)
+            printf("cycleElem returned NULL on i = %d\n", i);
+        printf("about to send signal to %ld\n", (long int) pid_elem->pid);
+        kill(pid_elem->pid, SIGCONT);
+    }
+
+    signal(SIGALRM, scheduler);
 }
 
 
@@ -86,8 +176,6 @@ int main(int argc, char* argv[])
 {
     int i;
 
-    int nprocesses  = -1; //p1atoi(getenv("TH_NPROCESSES"));
-    int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
     int location    = -1;
     
     char *command;
@@ -171,7 +259,6 @@ int main(int argc, char* argv[])
     for(i = 0; i < nprocesses; i++){
         
         if((pid_status = fork())== 0){
-
             status = sigwait(&set, &sig); 
 
             signal(SIGCONT, SIG_DFL);
@@ -208,6 +295,7 @@ int main(int argc, char* argv[])
     timer.it_value.tv_sec     = 0;
     timer.it_value.tv_usec    = 250000;
 
+    signal(SIGCHLD, childDeadHandler);
     signal(SIGALRM, scheduler);
 
     setitimer(ITIMER_REAL, &timer, NULL);

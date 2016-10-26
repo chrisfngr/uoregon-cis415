@@ -8,9 +8,57 @@
 #include <stdio.h>
 #include <signal.h>
 
+typedef struct pidQueueElem {
+    pid_t pid;
+    struct pidQueueElem* next;
+} pid_queue_elem;
+
+typedef struct pidQueue {
+    pid_queue_elem *head;
+    pid_queue_elem *tail;
+} pid_queue;
+
+
+//global pid queue. NOTE: should only be manipulated by 1 thread (the main thread)
+pid_queue queue = { NULL, NULL };
+
+
 void usage(){
     printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
+}
+
+pid_queue_elem* createPIDQueueElem(pid_t pid)
+{
+    pid_queue_elem *elem = NULL;
+    if((elem = (pid_queue_elem *) malloc(sizeof(pid_queue_elem))) == NULL)
+        return NULL;
+    elem->pid = pid;
+    elem->next = NULL;
+    printf("pid_queue_elem %ld created!\n", (long int) pid);
+    return elem;
+}
+
+/* adds new pid_queue_elem to tail of queue */
+pid_t addPIDToQueue(pid_t pid, pid_queue *queue)
+{
+    pid_queue_elem *elem = NULL;
+    if((elem = createPIDQueueElem(pid)) == NULL)
+        return -1;
+
+    if(queue->head == NULL){
+        queue->head = elem;
+        printf("pid %ld added as head!\n", (long int) pid);
+    }else if(queue->tail == NULL){
+        queue->tail = elem;
+        printf("pid %ld added as tail!\n", (long int) pid);
+    }else{
+        queue->tail->next = elem;
+        queue->tail       = elem;
+        printf("pid %ld added to end of queue!\n", (long int) pid);
+    }
+
+    return pid;
 }
 
 
@@ -21,8 +69,15 @@ void scheduler(){
     signal(SIGCONT) to the next NPROCESSORS from pid[] that are still alive
                     (which means this has to be able to access pid[])
     */
-
     printf("scheduler called\n");
+
+    /* broadcast SIGSTOP to stop all running processes */
+    kill(0, SIGSTOP); // might need to be -1 instead of 0
+
+    /* run the next NPROCESSORS living children from pid[] */
+    
+
+    //runNext(4); //replace with NPROCESSORS
 
 }
 
@@ -85,7 +140,10 @@ int main(int argc, char* argv[])
 
 
 
-    pid_t pid[nprocesses];
+    //pid_t pid[nprocesses];
+
+
+
 
     int status, s, sig;
     
@@ -107,10 +165,12 @@ int main(int argc, char* argv[])
     args[0] = command;
 
     args[1] = NULL;
+    
+    pid_t pid_status;
 
     for(i = 0; i < nprocesses; i++){
-       
-        if((pid[i] = fork()) == 0){
+        
+        if((pid_status = fork())== 0){
 
             status = sigwait(&set, &sig); 
 
@@ -132,6 +192,8 @@ int main(int argc, char* argv[])
                  exit(1);
             }
             
+        }else{
+            addPIDToQueue(pid_status, &queue);
         }
     }
 
@@ -147,8 +209,9 @@ int main(int argc, char* argv[])
     timer.it_value.tv_usec    = 250000;
 
     signal(SIGALRM, scheduler);
-    printf("about to set timer\n");
+
     setitimer(ITIMER_REAL, &timer, NULL);
+
     //end = clock();
     while(1); // just for testing so I can see the timer handler called (SIGALRM)
     // seems to be some error here but I will figure that out later 

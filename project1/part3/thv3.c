@@ -35,21 +35,6 @@ int main(int argc, char* argv[])
     int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
     int location    = -1;
     
-    if(getenv("TH_NPROCESSES") == NULL){
-        //setenv("TH_NPROCESSES", "5", 1);
-        printf("TH_NPROCESSES not given or in env vars!\n");
-        exit(0);
-    }
-    if(getenv("TH_NPROCESSORS") == NULL){
-        //setenv("TH_NPROCESSORS", "1", 1);
-        printf("TH_NPROCESSORS not given or in env vars!\n");
-        exit(0);
-    }
-
-    nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
-    nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
-
-
     char *command;
 
     for(i = 1; i < argc; i++){
@@ -82,8 +67,19 @@ int main(int argc, char* argv[])
     }
     
     
+    if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
+        printf("TH_NPROCESSES not given or in env vars!\n");
+        exit(0);
+    }
+    if(getenv("TH_NPROCESSORS") == NULL && nprocessors == -1){
+        printf("TH_NPROCESSORS not given or in env vars!\n");
+        exit(0);
+    }
 
-
+    if(nprocesses == -1)
+        nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
+    if(nprocessors == -1)
+        nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
 
     clock_t start, end; //figure this out later, but should be "start time"
 
@@ -139,45 +135,22 @@ int main(int argc, char* argv[])
         }
     }
 
-    timeval interval;
-    interval.tv_sec  = 0;
-    interval.tv_usec = 250000;
-
-    itimerval timer;
-    timer.it_interval = interval;
-    timer.it_value    = interval;
-
-    signal(SIGALRM, scheduler);
-
-    setitimer(ITIMER_REAL, timer, NULL);
 
     status = sigprocmask(SIG_UNBLOCK, &set, NULL);
+
     //start = clock();
-    for(i = 0; i < nprocesses; i++){
-        printf("sugusr1 being sent to %ld\n", (long int) pid[i]);
-        kill(pid[i], SIGUSR1);
-    }
 
+    struct itimerval timer;
+    timer.it_interval.tv_sec  = 0;
+    timer.it_interval.tv_usec = 250000;
+    timer.it_value.tv_sec     = 0;
+    timer.it_value.tv_usec    = 250000;
 
-    for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGSTOP to %ld\n", (long int) pid[i]);
-        kill(pid[i], SIGSTOP);
-    }
-
-
-    for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGCONT to %ld\n", (long int) pid[i]);
-        kill(pid[i], SIGCONT);
-    }
-
-    for(i = 0; i < nprocesses; i++){
-        waitpid(pid[i], &status, 0);
-    }
-
+    signal(SIGALRM, scheduler);
+    printf("about to set timer\n");
+    setitimer(ITIMER_REAL, &timer, NULL);
     //end = clock();
-
-
-
+    while(1); // just for testing so I can see the timer handler called (SIGALRM)
     // seems to be some error here but I will figure that out later 
     //printf("time elapsed: %ld - %ld / %d = %f\n", end, start, CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
 

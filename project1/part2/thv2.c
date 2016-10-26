@@ -12,6 +12,15 @@ void usage(){
     exit(1);
 }
 
+void handler(int sig){
+
+    printf("caught signal %d in thread %ld\n", sig, getpid());
+}
+
+void stophand(int sig){
+
+    printf("STOP: caught signal %d in thread %ld\n", sig, getpid());
+}
 
 int main(int argc, const char* argv[])
 {
@@ -79,6 +88,8 @@ int main(int argc, const char* argv[])
 
     sigemptyset(&set);
     sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGSTOP);
+    sigaddset(&set, SIGCONT);
     s = sigprocmask(SIG_BLOCK, &set, NULL);
     if(s != 0)
         printf("error in sigprocmask creation!!\n");
@@ -90,25 +101,26 @@ int main(int argc, const char* argv[])
 
 
     for(i = 0; i < nprocesses; i++){
-        pid[i] = fork();
-        if(pid[i] == 0){
+       
+        if((pid[i] = fork()) == 0){
 
-            for(;;){
-                status = sigwait(&set, &sig);           
-                if( status != 0)
-                    printf("error in sigwait!");
-                printf("thread %ld caught signal %d\n", getpid(), sig);
-            }
-            //printf("entered child %ld\n", getpid());
-            // sigwait(&mask, &sig);
-   
+            status = sigwait(&set, &sig); 
 
-            //signal(SIGSTOP, SIG_DFL);
-            //signal(SIGCONT, SIG_DFL);
+            signal(SIGSTOP, stophand);
+            signal(SIGCONT, handler);
 
-            //printf("child %ld recieved sigusr1", getpid());
+            
+
+            if(status != 0)
+                printf("error in sigwait!");
+
+            status = sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+            printf("thread %ld caught signal %d\n", getpid(), sig);
+            raise(SIGSTOP);
+            raise(SIGCONT);
+
             if(execvp(file, args) < 0){
-                 
                  exit(1);
             }
             
@@ -124,11 +136,13 @@ int main(int argc, const char* argv[])
 
 
     for(i = 0; i < nprocesses; i++){
+        printf("about to send SIGSTOP to %ld\n", pid[i]);
         kill(pid[i], SIGSTOP);
     }
 
 
     for(i = 0; i < nprocesses; i++){
+        printf("about to send SIGCONT to %ld\n", pid[i]);
         kill(pid[i], SIGCONT);
     }
 

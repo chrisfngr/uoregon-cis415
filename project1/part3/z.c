@@ -3,10 +3,15 @@
 #include <time.h>
 #include <unistd.h>
 int main(int argc, char *argv[]){
-    sleep(1);
+    int i = 0; 
 
     srand((double) clock());
     int a;
-    a = rand();
-    printf("I made a random number: %d!\n", a % 50);
+
+    for(i = 0; i < 100000000; i++){
+        a = (rand() + a) % 50;
+    }
+
+
+    printf("I made a random number: %d!\n", a);
 }

@@ -1,5 +1,4 @@
 #include "p1fxns.h"
-
 #include <sys/time.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -7,6 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 
 typedef struct pidQueueElem {
     pid_t pid;
@@ -25,12 +25,25 @@ pid_queue queue = { NULL, NULL };
 int nprocesses  = -1; 
 int nprocessors = -1;
 
+//command string
+char *command = NULL;
+
+//time vars
+struct timeval start, end;
+
 //mask for sigchld;
 sigset_t sig_chld_alrm_mask;
 int s;
 
 //routine for exiting program
 void exitRoutine(int status){
+    clock_gettime(CLOCK_REALTIME, &end);
+    printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
+            nprocesses, command, nprocessors,
+            ((end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec)*1000000000) );
+
+    if(command != NULL)
+        free(command);
     exit(status);
 }
 
@@ -69,7 +82,7 @@ pid_queue_elem* findElem(int pid, pid_queue *queue){
 int removeElem(pid_t pid, pid_queue *queue){
 
 
-    s = sigprocmask(SIG_BLOCK, &sig_chld_alrm_mask, NULL);
+    //s = sigprocmask(SIG_BLOCK, &sig_chld_alrm_mask, NULL);
 
     if(s != 0)
         printf("error in sigprocmask creation!!\n");
@@ -188,29 +201,26 @@ pid_queue_elem* cycleElem(pid_queue *queue){
 void childDeadHandler(){
     // remove dead child from queue somehow...
 
-    s = sigprocmask(SIG_BLOCK, &sig_chld_alrm_mask, NULL);
-
-    if(s != 0)
-        printf("error in sigprocmask creation!!\n");
-
     pid_t pid;
-    pid = waitpid(-1, NULL, WNOHANG);
-    
-    if(pid == 0)
-        return;
 
-    if(pid == -1)
-    {
-        printf("shit went wrong in wait...\n");
-        return;
+    while(1){
+
+        pid = waitpid(-1, NULL, WNOHANG);   
+
+        if(pid == 0)
+            return;
+
+        if(pid == -1)
+        {
+            printf("shit went wrong in wait...\n");
+            return;
+        }
+
+        printf("Child %ld just died\n", (long int) pid);
+
+        removeElem(pid, &queue);
+        printf("Child %ld finished remove\n", (long int) pid);
     }
-
-    printf("Child %ld just died\n", (long int) pid);
-
-    signal(SIGCHLD, childDeadHandler);
-    removeElem(pid, &queue);
-    printf("Child %ld finished remove\n", (long int) pid);
-    sigprocmask(SIG_UNBLOCK, &sig_chld_alrm_mask, NULL);
 
     return;
 }
@@ -252,7 +262,7 @@ int main(int argc, char* argv[])
 
     int location    = -1;
     
-    char *command;
+
 
     //setup gobal sigchld mask
     sig_chld_alrm_mask_setup();
@@ -301,7 +311,6 @@ int main(int argc, char* argv[])
     if(nprocessors == -1)
         nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
 
-    clock_t start, end; //figure this out later, but should be "start time"
 
 
 
@@ -363,7 +372,7 @@ int main(int argc, char* argv[])
 
     status = sigprocmask(SIG_UNBLOCK, &set, NULL);
 
-    //start = clock();
+    
 
     struct itimerval timer;
     timer.it_interval.tv_sec  = 0;
@@ -375,11 +384,11 @@ int main(int argc, char* argv[])
     signal(SIGALRM, scheduler);
 
     setitimer(ITIMER_REAL, &timer, NULL);
+ 
+    clock_gettime(CLOCK_REALTIME, &start);
+   
 
-    //end = clock();
     while(1); // just for testing so I can see the timer handler called (SIGALRM)
-    // seems to be some error here but I will figure that out later 
-    //printf("time elapsed: %ld - %ld / %d = %f\n", end, start, CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
 
     free(command);
 

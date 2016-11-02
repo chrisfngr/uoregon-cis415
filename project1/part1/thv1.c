@@ -36,13 +36,16 @@ void exitRoutine(int status){
 
     if(command != NULL)
         free(command);
+
     int i = 0;
+
     if(args != NULL){
-		while(i < argsSize){
-			free(args[i++]);
-		}
-		free(args);
-	}
+        while(i < argsSize){
+            free(args[i]);
+            i++;
+        }
+        free(args);
+    }
     exit(status);
 }
 

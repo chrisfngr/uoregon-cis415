@@ -41,6 +41,7 @@ void exitRoutine(int status){
 
     if(args != NULL){
         while(i < argsSize){
+            //free(*(args[i]));
             free(args[i]);
             i++;
         }
@@ -58,21 +59,27 @@ void usage(){
 
 
 void parseCommands(){
-    args = (char**) malloc(sizeof(char*));
+
     char buffer[256];
     int location = 0;
     int i = 0;
     
-    while(location != -1){
-   	    location = p1getword(command, location, buffer);
-   	    args[i] = p1strdup(buffer);
-   	    
-   	    args = (char**) realloc(args, sizeof(char*)*(++i + 1));
-   	    args[i] = NULL;
-	}
-	
-	argsSize = i + 1;
+    while(command[location] != '\0'){
+   	location = p1getword(command, location, buffer);
+   	i++;
+    }
+
+    argsSize = i+1;
+    printf("argsSize: %d\n", argsSize);
     
+    args = (char**) malloc(sizeof(char*)*argsSize);
+    location = 0;
+    i = 0;
+    while(command[location] != '\0'){
+        location = p1getword(command, location, buffer);
+        args[i++] = p1strdup(buffer);
+    }
+    args[i] = NULL;
 }
 
 void parseArgs(int argc, char* argv[])
@@ -109,9 +116,9 @@ void parseArgs(int argc, char* argv[])
             usage();
         }
         
-        parseCommands();
+
     }
-    
+    parseCommands();   
     if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
         printf("TH_NPROCESSES not given or in env vars!\n");
         exit(0);

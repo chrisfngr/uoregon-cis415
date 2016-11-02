@@ -1,4 +1,4 @@
-CFLAGS=-W -Wall
+CFLAGS=-g -W -Wall
 
 all: thv1
 

@@ -217,12 +217,6 @@ void childDeadHandler(){
 
 // runs on SIGALRM, stops running processes, runs next NPROCESSSORS processes
 void scheduler(){
-    /*
-    -----PSUEDO CODE-----
-    broadcast(SIGSTOP);
-    signal(SIGCONT) to the next NPROCESSORS from pid[] that are still alive
-                    (which means this has to be able to access pid[])
-    */
 
     signal(SIGALRM, SIG_IGN);
     printf("scheduler called\n");

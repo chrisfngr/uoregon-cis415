@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
             //raise(SIGSTOP);
             //raise(SIGCONT);
 
-            printf("about to call execvp(&s, &s, &s)\n", file, args[0], args[1]);
+            printf("about to call execvp(%s, %s, %s)\n", file, args[0], args[1]);
             if(execvp(file, args) < 0){
                  exit(1);
             }

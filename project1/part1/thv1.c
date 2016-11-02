@@ -11,7 +11,7 @@ void usage(){
     exit(1);
 }
 
-int main(int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
 
     int i;
@@ -73,16 +73,18 @@ int main(int argc, const char* argv[])
 
     int status;
 
+    char* args[2];
+    char file[p1strlen(command)+1];
+    p1strcpy(file, command);
+    args[0] = command;
+    args[1] = NULL;
+
     start = clock();
 
     for(i = 0; i < nprocesses; i++){
         pid[i] = fork();
         if(pid[i] == 0){
             
-            char* args[1];
-            char file[p1strlen(command)+1];
-            p1strcpy(file, command);
-            args[0] = command;
             if(execvp(file, args) < 0){
                  
                  exit(1);
@@ -99,7 +101,7 @@ int main(int argc, const char* argv[])
 
 
     // seems to be some error here but I will figure that out later 
-    printf("time elapsed: %ld - %ld / %d = %f\n", end, start, CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
+    printf("time elapsed: %ld - %ld / %d = %f\n", end, start, (int) CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
 
     free(command);
 

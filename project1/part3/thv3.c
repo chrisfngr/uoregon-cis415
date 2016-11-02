@@ -29,7 +29,7 @@ int nprocessors = -1;
 char *command = NULL;
 
 //time vars
-struct timeval start, end;
+struct timespec start, end;
 
 //mask for sigchld;
 sigset_t sig_chld_alrm_mask;
@@ -38,9 +38,14 @@ int s;
 //routine for exiting program
 void exitRoutine(int status){
     clock_gettime(CLOCK_REALTIME, &end);
+
+    long double starttime, endtime;
+    starttime = (long double) start.tv_sec + (((long double) start.tv_nsec)/1000000000);
+    endtime   = (long double) end.tv_sec + (((long double) end.tv_nsec)/1000000000);
+
     printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
             nprocesses, command, nprocessors,
-            ((end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec)*1000000000) );
+            (double) (endtime - starttime) );
 
     if(command != NULL)
         free(command);
@@ -131,17 +136,14 @@ void push(pid_queue_elem *elem, pid_queue *queue){
     if(queue->head == NULL){
         queue->head       = elem;
         queue->head->next = NULL;
-        printf("pid %ld added as head!\n", (long int) elem->pid);
     }else if(queue->tail == NULL){
         queue->tail       = elem;
         queue->tail->next = NULL;
         queue->head->next = elem;
-        printf("pid %ld added as tail!\n", (long int) elem->pid);
     }else{
         queue->tail->next = elem;
         queue->tail       = elem;
         queue->tail->next = NULL;
-        printf("pid %ld added to end of queue!\n", (long int) elem->pid);
     }
 
 }
@@ -216,10 +218,8 @@ void childDeadHandler(){
             return;
         }
 
-        printf("Child %ld just died\n", (long int) pid);
 
         removeElem(pid, &queue);
-        printf("Child %ld finished remove\n", (long int) pid);
     }
 
     return;
@@ -229,7 +229,6 @@ void childDeadHandler(){
 void scheduler(){
 
     signal(SIGALRM, SIG_IGN);
-    printf("scheduler called\n");
 
     if(queueIsEmpty(&queue)){
         printf("queue is empty\n");
@@ -390,7 +389,7 @@ int main(int argc, char* argv[])
 
     while(1); // just for testing so I can see the timer handler called (SIGALRM)
 
-    free(command);
+
 
     return 1;
 

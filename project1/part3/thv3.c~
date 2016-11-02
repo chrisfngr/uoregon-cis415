@@ -325,8 +325,8 @@ int main(int argc, char* argv[])
     sigaddset(&set, SIGSTOP);
     sigaddset(&set, SIGCONT);
 
-    struct sigaction action;
-    action.sa_handler = SIG_DFL;
+    //struct sigaction action;
+    //action.sa_handler = SIG_DFL;
     
 
     s = sigprocmask(SIG_BLOCK, &set, NULL);

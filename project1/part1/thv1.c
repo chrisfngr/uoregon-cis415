@@ -1,11 +1,9 @@
 #include "p1fxns.h"
-
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
-#include <stdio.h>
 
 //number of processes and processors
 int nprocesses  = -1; 
@@ -25,35 +23,51 @@ int argsSize = 0;
 //routine for exiting program
 void exitRoutine(int status){
     clock_gettime(CLOCK_REALTIME, &end);
+    
+    long int tmp_nsecs, secs, msecs;
+    
+    tmp_nsecs = end.tv_nsec - start.tv_nsec;
+    
+    secs  = (tmp_nsecs > 0) ? (long int) (end.tv_sec - start.tv_sec) :  (long int) ((end.tv_sec - start.tv_sec) - 1);
+    
+    msecs = (tmp_nsecs > 0) ? (long int) ((tmp_nsecs)/1000000) : (long int) ((1000000000 + (tmp_nsecs))/1000000);
 
-    long double starttime, endtime;
-    starttime = (long double) start.tv_sec + (((long double) start.tv_nsec)/1000000000);
-    endtime   = (long double) end.tv_sec + (((long double) end.tv_nsec)/1000000000);
+    char msecs_str[32];
+    char secs_str[32];
+    
+    p1itoa(secs, secs_str);
+    p1itoa(msecs, msecs_str);
+    
+    secs_str[7]  = '\0';
+    msecs_str[3] = '\0';
 
-    printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
-            nprocesses, command, nprocessors,
-            (double) (endtime - starttime) );
-
+    p1putstr(1, "The elapsed time to execute ");
+    p1putint(1, nprocesses);
+    p1putstr(1, " copies of \"");
+    p1putstr(1, command);
+    p1putstr(1, "\" on ");
+    p1putint(1, nprocessors);
+    p1putstr(1, " processors is ");
+    p1putstr(1, secs_str);
+    p1putstr(1, ".");
+    if(msecs < 100){
+        p1putstr(1, "0");
+        if(msecs < 10){
+		    p1putstr(1, "0");
+		}
+	}
+    p1putstr(1, msecs_str);
+    p1putstr(1, "sec\n");
+           
     if(command != NULL)
         free(command);
-
-    int i = 0;
-
-    if(args != NULL){
-        while(i < argsSize){
-            //free(*(args[i]));
-            free(args[i]);
-            i++;
-        }
-        free(args);
-    }
     exit(status);
 }
 
 
 
 void usage(){
-    printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
+    p1perror(2, "USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
 }
 
@@ -70,7 +84,6 @@ void parseCommands(){
     }
 
     argsSize = i+1;
-    printf("argsSize: %d\n", argsSize);
     
     args = (char**) malloc(sizeof(char*)*argsSize);
     location = 0;
@@ -120,11 +133,11 @@ void parseArgs(int argc, char* argv[])
     }
     parseCommands();   
     if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
-        printf("TH_NPROCESSES not given or in env vars!\n");
+        p1perror(2, "TH_NPROCESSES not given or in env vars!\n");
         exit(0);
     }
     if(getenv("TH_NPROCESSORS") == NULL && nprocessors == -1){
-        printf("TH_NPROCESSORS not given or in env vars!\n");
+        p1perror(2, "TH_NPROCESSORS not given or in env vars!\n");
         exit(0);
     }
 

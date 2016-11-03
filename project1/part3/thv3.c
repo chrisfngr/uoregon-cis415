@@ -4,7 +4,6 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <signal.h>
 #include <time.h>
 
@@ -35,26 +34,84 @@ struct timespec start, end;
 sigset_t sig_chld_alrm_mask;
 int s;
 
+//args to send to execvp
+char **args  = NULL;
+int argsSize = 0;
+
+
 //routine for exiting program
 void exitRoutine(int status){
     clock_gettime(CLOCK_REALTIME, &end);
+    
+    long int tmp_nsecs, secs, msecs;
+    
+    tmp_nsecs = end.tv_nsec - start.tv_nsec;
+    
+    secs  = (tmp_nsecs > 0) ? (long int) (end.tv_sec - start.tv_sec) :  (long int) ((end.tv_sec - start.tv_sec) - 1);
+    
+    msecs = (tmp_nsecs > 0) ? (long int) ((tmp_nsecs)/1000000) : (long int) ((1000000000 + (tmp_nsecs))/1000000);
 
-    long double starttime, endtime;
-    starttime = (long double) start.tv_sec + (((long double) start.tv_nsec)/1000000000);
-    endtime   = (long double) end.tv_sec + (((long double) end.tv_nsec)/1000000000);
 
-    printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
-            nprocesses, command, nprocessors,
-            (double) (endtime - starttime) );
+    char msecs_str[32];
+    char secs_str[32];
+    
+    p1itoa(secs, secs_str);
+    p1itoa(msecs, msecs_str);
+    
+    secs_str[7]  = '\0';
+    msecs_str[3] = '\0';
 
+    p1putstr(1, "The elapsed time to execute ");
+    p1putint(1, nprocesses);
+    p1putstr(1, " copies of \"");
+    p1putstr(1, command);
+    p1putstr(1, "\" on ");
+    p1putint(1, nprocessors);
+    p1putstr(1, " processors is ");
+    p1putstr(1, secs_str);
+    p1putstr(1, ".");
+    if(msecs < 100){
+        p1putstr(1, "0");
+        if(msecs < 10){
+		    p1putstr(1, "0");
+		}
+	}
+    p1putstr(1, msecs_str);
+    p1putstr(1, "sec\n");
+           
     if(command != NULL)
         free(command);
     exit(status);
 }
 
+
+void parseCommands(){
+
+    char buffer[256];
+    int location = 0;
+    int i = 0;
+    
+    while(command[location] != '\0'){
+   	location = p1getword(command, location, buffer);
+   	i++;
+    }
+
+    argsSize = i+1;
+    
+    args = (char**) malloc(sizeof(char*)*argsSize);
+    location = 0;
+    i = 0;
+    while(command[location] != '\0'){
+        location = p1getword(command, location, buffer);
+        args[i++] = p1strdup(buffer);
+    }
+    args[i] = NULL;
+}
+
+
 // usage rules for program
 void usage(){
-    printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
+    p1putstr(2, "USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exitRoutine(EXIT_FAILURE);
 }
 
@@ -90,7 +147,7 @@ int removeElem(pid_t pid, pid_queue *queue){
     //s = sigprocmask(SIG_BLOCK, &sig_chld_alrm_mask, NULL);
 
     if(s != 0)
-        printf("error in sigprocmask creation!!\n");
+        p1perror(2, "error in sigprocmask creation!!\n");
 
     pid_queue_elem *elem_to_rm, *elem;
     elem_to_rm = NULL;
@@ -136,7 +193,8 @@ void push(pid_queue_elem *elem, pid_queue *queue){
     if(queue->head == NULL){
         queue->head       = elem;
         queue->head->next = NULL;
-    }else if(queue->tail == NULL){
+    }else if(queue->tail == NULL)
+    {
         queue->tail       = elem;
         queue->tail->next = NULL;
         queue->head->next = elem;
@@ -191,7 +249,7 @@ pid_t addPIDToQueue(pid_t pid, pid_queue *queue)
 pid_queue_elem* cycleElem(pid_queue *queue){
     pid_queue_elem *elem = NULL;
     if((elem = pop(queue)) == NULL){
-        printf("weird... pop was null in cycleElem\n");
+        p1perror(2, "weird... pop was null in cycleElem\n");
         return NULL;
     }
     push(elem, queue);
@@ -214,7 +272,7 @@ void childDeadHandler(){
 
         if(pid == -1)
         {
-            printf("shit went wrong in wait...\n");
+            p1perror(2, "wait returned with error...\n");
             return;
         }
 
@@ -231,7 +289,7 @@ void scheduler(){
     signal(SIGALRM, SIG_IGN);
 
     if(queueIsEmpty(&queue)){
-        printf("queue is empty\n");
+        p1perror(2, "queue is empty\n");
         exitRoutine(EXIT_SUCCESS);
     }
 
@@ -247,7 +305,7 @@ void scheduler(){
     pid_queue_elem *pid_elem = NULL;
     for(i = 0; i < nprocessors; i++){
         if((pid_elem = cycleElem(&queue)) == NULL)
-            printf("cycleElem returned NULL on i = %d\n", i);
+            p1perror(2, "cycleElem returned NULL\n");
         kill(pid_elem->pid, SIGCONT);
     }
 
@@ -291,13 +349,14 @@ void parseArgs(int argc, char* argv[])
     }
     
     if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
-        printf("TH_NPROCESSES not given or in env vars!\n");
+        p1perror(2, "TH_NPROCESSES not given or in env vars!\n");
         exit(0);
     }
     if(getenv("TH_NPROCESSORS") == NULL && nprocessors == -1){
-        printf("TH_NPROCESSORS not given or in env vars!\n");
+        p1perror(2, "TH_NPROCESSORS not given or in env vars!\n");
         exit(0);
     }
+    parseCommands();   
 
     if(nprocesses == -1)
         nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
@@ -313,9 +372,6 @@ int main(int argc, char* argv[])
     sig_chld_alrm_mask_setup();
     
 
-
-    //pid_t pid[nprocesses];
-
     parseArgs(argc, argv);
 
     int status, s, sig;
@@ -326,23 +382,14 @@ int main(int argc, char* argv[])
     sigaddset(&set, SIGUSR1);
     sigaddset(&set, SIGSTOP);
     sigaddset(&set, SIGCONT);
-
-    //struct sigaction action;
-    //action.sa_handler = SIG_DFL;
     
 
     s = sigprocmask(SIG_BLOCK, &set, NULL);
 
     if(s != 0)
-        printf("error in sigprocmask creation!!\n");
+        p1perror(2, "error in sigprocmask creation!!\n");
  
-    char* args[2];
-    char file[p1strlen(command)+1];
-    p1strcpy(file, command);
-    args[0] = command;
 
-    args[1] = NULL;
-    
     pid_t pid_status;
 
     for(i = 0; i < nprocesses; i++){
@@ -354,12 +401,12 @@ int main(int argc, char* argv[])
 
 
             if(status != 0)
-                printf("error in sigwait!");
+                p1perror(2, "error in sigwait!\n");
 
             if(status != 0)
-                printf("sig_unblock didn't work :(\n");
+                p1perror(2, "sig_unblock encountered error\n");
 
-            if(execvp(file, args) < 0){
+            if(execvp(args[0], args) < 0){
                  exit(1);
             }
             

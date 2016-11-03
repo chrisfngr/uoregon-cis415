@@ -8,33 +8,51 @@
 #include <stdio.h>
 #include <signal.h>
 
+
+//number of processes and processors
+int nprocesses  = -1; 
+int nprocessors = -1;
+
+//command string
+char *command = NULL;
+
+//time vars
+struct timespec start, end;
+
+
+
+
+//routine for exiting program
+void exitRoutine(int status){
+    clock_gettime(CLOCK_REALTIME, &end);
+
+    long double starttime, endtime;
+    starttime = (long double) start.tv_sec + (((long double) start.tv_nsec)/1000000000);
+    endtime   = (long double) end.tv_sec + (((long double) end.tv_nsec)/1000000000);
+
+    printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
+            nprocesses, command, nprocessors,
+            (double) (endtime - starttime) );
+
+    if(command != NULL)
+        free(command);
+    exit(status);
+}
+
+
+
 void usage(){
     printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
 }
 
 
-int main(int argc, char* argv[])
+void parseArgs(int argc, char* argv[])
 {
     int i;
-
-    int nprocesses  = -1; //p1atoi(getenv("TH_NPROCESSES"));
-    int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
-    int location    = -1;
-    
-    if(getenv("TH_NPROCESSES") == NULL){
-        setenv("TH_NPROCESSES", "5", 1);
-    }
-    if(getenv("TH_NPROCESSORS") == NULL){
-        setenv("TH_NPROCESSORS", "1", 1);
-    }
-
-    nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
-    nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
-
-
-    char *command;
-
+	
+	int location = -1;
+	
     for(i = 1; i < argc; i++){
         if(p1strneq(argv[i], "--number=", p1strlen("--number=")) == 1){
             if((location = p1strchr(argv[i], '=')) == -1){
@@ -64,12 +82,32 @@ int main(int argc, char* argv[])
         }
     }
     
-    
+    if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
+        printf("TH_NPROCESSES not given or in env vars!\n");
+        exit(0);
+    }
+    if(getenv("TH_NPROCESSORS") == NULL && nprocessors == -1){
+        printf("TH_NPROCESSORS not given or in env vars!\n");
+        exit(0);
+    }
+
+    if(nprocesses == -1)
+        nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
+    if(nprocessors == -1)
+        nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
+}
 
 
 
-    clock_t start, end; //figure this out later, but should be "start time"
 
+
+
+int main(int argc, char* argv[])
+{
+    int i;
+
+
+    parseArgs(argc, argv);
 
 
     pid_t pid[nprocesses];
@@ -110,11 +148,6 @@ int main(int argc, char* argv[])
             if(status != 0)
                 printf("sig_unblock didn't work :)\n");
 
-            printf("thread %ld caught signal %d\n", (long int) getpid(), sig);
-            //raise(SIGSTOP);
-            //raise(SIGCONT);
-
-            printf("about to call execvp(%s, %s, %s)\n", file, args[0], args[1]);
             if(execvp(file, args) < 0){
                  exit(1);
             }
@@ -123,21 +156,20 @@ int main(int argc, char* argv[])
     }
 
     status = sigprocmask(SIG_UNBLOCK, &set, NULL);
-    //start = clock();
+
+    clock_gettime(CLOCK_REALTIME, &start);
+
     for(i = 0; i < nprocesses; i++){
-        printf("sugusr1 being sent to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGUSR1);
     }
 
 
     for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGSTOP to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGSTOP);
     }
 
 
     for(i = 0; i < nprocesses; i++){
-        printf("about to send SIGCONT to %ld\n", (long int) pid[i]);
         kill(pid[i], SIGCONT);
     }
 
@@ -145,13 +177,8 @@ int main(int argc, char* argv[])
         waitpid(pid[i], &status, 0);
     }
 
-    //end = clock();
 
-
-    // seems to be some error here but I will figure that out later 
-    //printf("time elapsed: %ld - %ld / %d = %f\n", end, start, CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
-
-    free(command);
+    exitRoutine(EXIT_SUCCESS);
 
     return 1;
 

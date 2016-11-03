@@ -207,7 +207,7 @@ void childDeadHandler(){
 
     while(1){
 
-        pid = waitpid(-1, NULL, WNOHANG);   
+		pid = waitpid(-1, NULL, WNOHANG);   
 
         if(pid == 0)
             return;
@@ -255,17 +255,12 @@ void scheduler(){
 }
 
 
-int main(int argc, char* argv[])
+void parseArgs(int argc, char* argv[])
 {
     int i;
-
-    int location    = -1;
-    
-
-
-    //setup gobal sigchld mask
-    sig_chld_alrm_mask_setup();
-
+	
+	int location = -1;
+	
     for(i = 1; i < argc; i++){
         if(p1strneq(argv[i], "--number=", p1strlen("--number=")) == 1){
             if((location = p1strchr(argv[i], '=')) == -1){
@@ -295,7 +290,6 @@ int main(int argc, char* argv[])
         }
     }
     
-    
     if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
         printf("TH_NPROCESSES not given or in env vars!\n");
         exit(0);
@@ -309,14 +303,20 @@ int main(int argc, char* argv[])
         nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
     if(nprocessors == -1)
         nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
+}
 
+int main(int argc, char* argv[])
+{
+    int i;
 
+    //setup gobal sigchld mask
+    sig_chld_alrm_mask_setup();
+    
 
 
     //pid_t pid[nprocesses];
 
-
-
+    parseArgs(argc, argv);
 
     int status, s, sig;
     
@@ -387,7 +387,7 @@ int main(int argc, char* argv[])
     clock_gettime(CLOCK_REALTIME, &start);
    
 
-    while(1); // just for testing so I can see the timer handler called (SIGALRM)
+    while(1); // continues running until exitRutine is called
 
 
 

@@ -7,32 +7,77 @@
 #include <time.h>
 #include <stdio.h>
 
+//number of processes and processors
+int nprocesses  = -1; 
+int nprocessors = -1;
+
+//command string
+char *command = NULL;
+
+//time vars
+struct timespec start, end;
+
+
+//args to send to execvp
+char **args  = NULL;
+int argsSize = 0;
+
+//routine for exiting program
+void exitRoutine(int status){
+    clock_gettime(CLOCK_REALTIME, &end);
+
+    long double starttime, endtime;
+    starttime = (long double) start.tv_sec + (((long double) start.tv_nsec)/1000000000);
+    endtime   = (long double) end.tv_sec + (((long double) end.tv_nsec)/1000000000);
+
+    printf("The elapsed time to execute %d copies of \"%s\" on %d processors is %7.3fsec\n",
+            nprocesses, command, nprocessors,
+            (double) (endtime - starttime) );
+
+    if(command != NULL)
+        free(command);
+    int i = 0;
+    if(args != NULL){
+		while(i < argsSize){
+			free(args[i++]);
+		}
+		free(args);
+	}
+    exit(status);
+}
+
+
+
 void usage(){
+    printf("USAGE: program [--number=<nprocesses>] [--processors=<nprocessors>] --command='command'\n");
     exit(1);
 }
 
-int main(int argc, char* argv[])
+
+void parseCommands(){
+    args = (char**) malloc(sizeof(char*));
+    char buffer[256];
+    int location = 0;
+    int i = 0;
+    
+    while(location != -1){
+   	    location = p1getword(command, location, buffer);
+   	    args[i] = p1strdup(buffer);
+   	    
+   	    args = (char**) realloc(args, sizeof(char*)*(++i + 1));
+   	    args[i] = NULL;
+	}
+	
+	argsSize = i + 1;
+    
+}
+
+void parseArgs(int argc, char* argv[])
 {
-
     int i;
-    
-    int nprocesses  = -1; //p1atoi(getenv("TH_NPROCESSES"));
-    int nprocessors = -1; //p1atoi(getenv("TH_NPROCESSORS"));    
-    int location    = -1;
-    
-    if(getenv("TH_NPROCESSES") == NULL){
-        setenv("TH_NPROCESSES", "5", 1);
-    }
-    if(getenv("TH_NPROCESSORS") == NULL){
-        setenv("TH_NPROCESSORS", "1", 1);
-    }
-
-    nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
-    nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
-
-
-    char *command;
-
+	
+	int location = -1;
+	
     for(i = 1; i < argc; i++){
         if(p1strneq(argv[i], "--number=", p1strlen("--number=")) == 1){
             if((location = p1strchr(argv[i], '=')) == -1){
@@ -40,7 +85,6 @@ int main(int argc, char* argv[])
             }
 
             // use p1atoi to convert str to int
-
             nprocesses = p1atoi(&(argv[i][location+1]));
  
         }else if(p1strneq(argv[i], "--processors=", p1strlen("--processors=")) == 1){
@@ -58,14 +102,35 @@ int main(int argc, char* argv[])
             }
 
             p1strcpy(command, &(argv[i][location+1]));
+        }else{
+            usage();
         }
+        
+        parseCommands();
     }
     
+    if(getenv("TH_NPROCESSES") == NULL && nprocesses == -1){
+        printf("TH_NPROCESSES not given or in env vars!\n");
+        exit(0);
+    }
+    if(getenv("TH_NPROCESSORS") == NULL && nprocessors == -1){
+        printf("TH_NPROCESSORS not given or in env vars!\n");
+        exit(0);
+    }
+
+    if(nprocesses == -1)
+        nprocesses  = p1atoi(getenv("TH_NPROCESSES"));
+    if(nprocessors == -1)
+        nprocessors = p1atoi(getenv("TH_NPROCESSORS"));
+}
+
+int main(int argc, char* argv[])
+{
+
+    int i;
     
-
-
-
-    clock_t start, end; //figure this out later, but should be "start time"
+    
+    parseArgs(argc, argv);
 
 
 
@@ -73,19 +138,12 @@ int main(int argc, char* argv[])
 
     int status;
 
-    char* args[2];
-    char file[p1strlen(command)+1];
-    p1strcpy(file, command);
-    args[0] = command;
-    args[1] = NULL;
-
-    start = clock();
 
     for(i = 0; i < nprocesses; i++){
         pid[i] = fork();
         if(pid[i] == 0){
             
-            if(execvp(file, args) < 0){
+            if(execvp(args[0], args) < 0){
                  
                  exit(1);
             }
@@ -93,17 +151,14 @@ int main(int argc, char* argv[])
         }
     }
 
+    clock_gettime(CLOCK_REALTIME, &start);
+
+
     for(i = 0; i < nprocesses; i++){
         waitpid(pid[i], &status, 0);
     }
 
-    end = clock();
-
-
-    // seems to be some error here but I will figure that out later 
-    printf("time elapsed: %ld - %ld / %d = %f\n", end, start, (int) CLOCKS_PER_SEC, ((double) end - start) / CLOCKS_PER_SEC);
-
-    free(command);
+    exitRoutine(EXIT_SUCCESS);
 
     return 1;
 

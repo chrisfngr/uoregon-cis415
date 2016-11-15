@@ -1,0 +1,62 @@
+Joseph Yaconelli
+CIS 415 - Assignment 3
+
+1.
+a) can be done safely at any time.
+b) Can only be done safely if the new available amount is still at least the Max.
+c) can be done safely if the new Max is still less than or equal to the available amount.
+d) can be done safely at any time.
+e) can be done safely at any time.
+f) can be done safely at any time.
+
+
+2.
+a) External Fragmentation:
+Contiguous memory allocation won't have any external fragmentation at first,
+but as processes die and give back memory, there can start to do external
+fragmentation as small processes die and larger processes request memory.
+Pure segmentation and pure paging do not have external fragmentation because
+the memory sizes are fixed and can always be allocated.
+
+b) Internal Fragmentation:
+Contiguous memory allocation never has internal fragmentation because it
+always allocates exactly how much a process needs.
+Pure segmentation also never has internal fragmentation because segments are
+also always the exact size they need to be.
+Pure paging will have internal fragmentation, because pages are of a fixed
+size, so even if a process doesn't need the full page, it's given a full one.
+
+c) Ability to share code across processes:
+Contiguous allocation does not allow any code sharing across processes, since
+each process is just given a block of memory for all it's own code.
+In pure segmentation, if a certain segment only holds code, then two processes
+can share that code by both referencing the same segment in their segment
+tables.
+In pure paging, code can also be shared across processes. This is done
+similarly by two processes referencing a page in their page table to map
+a certain set of logical addresses to the same page of physical addresses.
+
+
+3.
+a) 100 nanoseconds, because it first has to get the physical address out of
+the page table in memory, then get the info in that physical address out of
+memory.
+
+b) ((50 + 2)*.75) + (50 + 50)*.25) = 64 nanoseconds
+
+
+4.
+a) The page was removed from the TLB but the page was already in
+memory
+b) The page was removed from the TLB and overwritten in memory, so it isn't
+found in the TLB and also is a page fault.
+c) The page is in the TLB, but is also already in memory, so it hits in the
+TLB and doesn't create a page fault.
+d) The page is in the TLB, but has been overwritten in memory, so it creates
+a page fault since it has to be brought back into memory.
+
+
+5.
+a) 18 page faults
+b) 17 page faults
+c) 13 page faults

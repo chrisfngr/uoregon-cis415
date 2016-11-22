@@ -9,7 +9,7 @@ libADTS.a: iterator.o linkedlist.o treeset.o re.o
 	ranlib libADTS.a
 
 clean:
-	rm -f *.o libADTS.a file_crawler_single
+	rm -f *.o file_crawler_single
 
 iterator.o: iterator.c iterator.h
 linkedlist.o: linkedlist.c linkedlist.h iterator.h

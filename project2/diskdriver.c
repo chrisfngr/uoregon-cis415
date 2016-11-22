@@ -13,8 +13,8 @@
 pthread_t write_thread, read_thread;
 
 /* pthread lock and condition for vouchers */
-pthread_mutex_t read_lock, write_lock;
-pthread_cond_t  read_cond, write_cond;
+//pthread_mutex_t *locks[BUFFER_SIZE];
+//pthread_cond_t  *conds[BUFFER_SIZE];
 /* disk device - in charge of executing reads and writes */
 DiskDevice *device = NULL;
 
@@ -39,8 +39,8 @@ typedef enum {
 struct voucher {
     voucher_status     status;
     voucher_type       type;
-    pthread_mutex_t   *lock;
-    pthread_cond_t    *condition;
+    pthread_mutex_t    lock;
+    pthread_cond_t     condition;
     SectorDescriptor  *sector;
 };
 
@@ -58,8 +58,15 @@ int fill_free_voucher_bb()
     int i;
     for(i = 0; i < BUFFER_SIZE; i++)
     {
-        vouchers[i].lock      = NULL;
-        vouchers[i].condition = NULL;
+        /* init pthread mutex and condition */
+        //*(locks[i]) = PTHREAD_MUTEX_INITIALIZER;
+        //*(conds[i]) = PTHREAD_COND_INITIALIZER;
+        //pthread_mutex_init(locks[i], NULL);
+        //pthread_cond_init(conds[i], NULL);
+       
+        /* add lock and condition to voucher */ 
+        pthread_mutex_init(&(vouchers[i].lock), NULL);
+        pthread_cond_init(&(vouchers[i].condition), NULL);
 
         if(nonblockingWriteBB(free_voucher_bb, &(vouchers[i])) == 0)
             return 0;
@@ -75,25 +82,22 @@ void * write_worker()
     {
         printf("about to get voucher \n");
         Voucher *v = (Voucher *) blockingReadBB(write_bb);
+
         printf("got voucher!!\n");
+
         if(v == NULL)
             printf("voucher null!!\n");
-        //Voucher *v;
 
         if(v->sector == NULL)
             printf("sector null!!\n");
 
-        //if((nonblockingReadBB(write_bb, (void **) &v)) == 0)
-        //    printf("coudnt get shit from writebaby\n");
-
- 
 
         pthread_mutex_lock(&(v->lock));
         fprintf(stderr, "about to run write_sector...\n");
         v->status = (write_sector(device, v->sector) == 1) ? COMPLETE : ERROR;
-        pthread_cond_signal(v->condition);  //might need to broadcast instead
+        pthread_cond_signal(&(v->condition));  //might need to broadcast instead
         printf("status: %d\n", v->status);
-        pthread_mutex_unlock(v->lock);
+        pthread_mutex_unlock(&(v->lock));
     }
 }
 
@@ -105,10 +109,10 @@ void * read_worker()
 
         Voucher *v = (Voucher *) blockingReadBB(read_bb);
 
-        pthread_mutex_lock(v->lock);
+        pthread_mutex_lock(&(v->lock));
         v->status = (read_sector(device, v->sector) == 1) ? COMPLETE : ERROR;
-        pthread_cond_signal(v->condition);  //might need to broadcast instead
-        pthread_mutex_unlock(v->lock);
+        pthread_cond_signal(&(v->condition));  //might need to broadcast instead
+        pthread_mutex_unlock(&(v->lock));
     }
 }
 
@@ -126,12 +130,6 @@ void init_disk_driver(DiskDevice *dd, void *mem_start,
     create_free_sector_descriptors(*fsds, mem_start, mem_length);
 
 
-    /* init pthread mutex and condition */
-    pthread_mutex_init(&write_lock, NULL);
-    pthread_cond_init(&write_cond, NULL);
-
-    pthread_mutex_init(&read_lock, NULL);
-    pthread_cond_init(&read_cond, NULL);
 
     /* create bounded buffers for write, read, and free vouchers */
     if((write_bb = createBB(BUFFER_SIZE)) == NULL)
@@ -165,8 +163,6 @@ void set_voucher(Voucher *v, SectorDescriptor *sd, voucher_type v_type)
     v->status    = INCOMPLETE;
     v->type      = v_type;
     v->sector    = sd;
-    v->lock      = (v_type == WRITE) ? &write_lock : &read_lock;
-    v->condition = (v_type == WRITE) ? &write_cond : &read_cond;
 }
 
 
@@ -178,7 +174,7 @@ void blocking_write_sector(SectorDescriptor *sd, Voucher **v)
 
     set_voucher(*v, sd, READ);
 
-    blockingWriteBB(write_bb, &v);
+    blockingWriteBB(write_bb, *v);
 }
 
 int nonblocking_write_sector(SectorDescriptor *sd, Voucher **v)
@@ -198,7 +194,7 @@ void blocking_read_sector(SectorDescriptor *sd, Voucher **v)
 
     set_voucher(*v, sd, READ);
 
-    blockingWriteBB(read_bb, &v);
+    blockingWriteBB(read_bb, *v);
 }
 
 int nonblocking_read_sector(SectorDescriptor *sd, Voucher **v)
@@ -216,12 +212,18 @@ int nonblocking_read_sector(SectorDescriptor *sd, Voucher **v)
 
 int redeem_voucher(Voucher *v, SectorDescriptor **sd)
 {
-    pthread_mutex_lock(v->lock);
+    pthread_mutex_lock(&(v->lock));
     while(v->status == INCOMPLETE)
-        pthread_cond_wait(v->condition, v->lock);
+        pthread_cond_wait(&(v->condition), &(v->lock));
     blockingWriteBB(free_voucher_bb, v);
 
-    sd = &(v->sector);
-    pthread_mutex_unlock(v->lock);
+    if(v->type == READ)
+        *sd = v->sector;
+    else
+        init_sector_descriptor(v->sector);
+    
+
+    pthread_mutex_unlock(&(v->lock));
+
     return (v->status == COMPLETE);
 }

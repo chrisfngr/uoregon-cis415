@@ -1,0 +1,6 @@
+Joseph Yaconelli
+josephy
+CIS 415 Extra Credit
+
+My solution doesn't work. I only got as far as setting it up with one thread (and haven't taken the environment variables into consideration yet).
+It gets part way through printing the ordered results of the query, but then segfaults when the worker thread exits.
